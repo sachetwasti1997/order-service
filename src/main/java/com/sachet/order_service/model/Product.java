@@ -8,14 +8,14 @@ import lombok.ToString;
 @Getter
 @Setter
 @Entity
-@ToString
-@Table(name = "product")
 public class Product {
 
     @Id
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
     private String title;
     private double price;
+    private boolean isReserved;
     private int version;
 
 }

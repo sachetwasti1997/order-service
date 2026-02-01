@@ -1,24 +1,19 @@
 package com.sachet.order_service.model;
 
-import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.io.Serializable;
 import java.util.Date;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "order")
-public class Order implements Serializable {
+public class OrderDto {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
     private String userId;
     private Status status;
     private Date expiresAt;
+    @NotBlank(message = "productId cannot be blank!")
     private Long productId;
     private double price;
 

@@ -25,6 +25,8 @@ order.config:
   token_expiration: 36000000
   topics:
     add-product: user-add-product
+    order-created: order-created
+    order-cancelled: order-cancelled
   databaseConfiguration:
     driverClassName: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://mysql-0.mysql.default.svc.cluster.local:3306/ecommorder
