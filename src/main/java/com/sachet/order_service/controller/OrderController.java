@@ -1,5 +1,6 @@
 package com.sachet.order_service.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.sachet.order_service.model.Order;
 import com.sachet.order_service.model.OrderDto;
 import com.sachet.order_service.service.JwtService;
@@ -36,14 +37,14 @@ public class OrderController {
     @PostMapping("/create")
     public Order createOrder(@RequestHeader("Authorization")String bearerToken,
                              @RequestParam(name = "email")String email,
-                             @RequestBody @Valid OrderDto orderDto) {
+                             @RequestBody @Valid OrderDto orderDto) throws JsonProcessingException {
         return orderService.saveOrder(bearerToken, email, orderDto);
     }
 
     @PutMapping("/cancel")
     public Order cancelOrder(@RequestHeader("Authorization")String bearerToken,
                              @RequestParam(name = "email")String email,
-                             @RequestBody @Valid OrderDto orderDto) {
+                             @RequestBody @Valid OrderDto orderDto) throws JsonProcessingException {
         return orderService.cancelOrder(bearerToken, email, orderDto);
     }
 }
