@@ -84,7 +84,7 @@ public class OrderService {
         order.setStatus(Status.ORDER_CREATED);
         //TODO: Publish event
         kafkaTemplate.send(environmentConfiguration.getTopics().get("order-created"),
-                        objectMapper.writeValueAsString(orderDto))
+                        objectMapper.writeValueAsString(order))
                 .thenAccept(result -> {
                     LOGGER.info("Successfully sent the event {}", result);
                 }).join();
@@ -117,7 +117,7 @@ public class OrderService {
         order.setStatus(Status.ORDER_CANCELLED);
         //TODO: Publish event
         kafkaTemplate.send(environmentConfiguration.getTopics().get("order-cancelled"),
-                objectMapper.writeValueAsString(orderDto))
+                objectMapper.writeValueAsString(order))
                 .thenAccept(result -> {
                     LOGGER.info("Successfully sent the event {}", result);
                 }).join();
