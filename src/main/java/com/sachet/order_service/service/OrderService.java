@@ -65,9 +65,9 @@ public class OrderService {
         productRepo.save(product);
     }
 
-    public Orders saveOrder(String bearerToken, String email, OrderDto orderDto) throws JsonProcessingException {
+    public Orders saveOrder(String bearerToken, OrderDto orderDto) throws JsonProcessingException {
         bearerToken = bearerToken.substring(7);
-        if (!jwtService.validateToken(email, bearerToken)) {
+        if (!jwtService.validateToken(orderDto.getUserId(), bearerToken)) {
             throw new InvalidJwtException("The token is invalid!");
         }
         long productId = orderDto.getProductId();
@@ -78,10 +78,11 @@ public class OrderService {
             throw new ProductNotFound("The product not found!");
         }
         Product orderItem = product.get();
-        if (orderItem.getCount() >= 0 && orderItem.getCount() >= orderDto.getCount()) {
+        if (orderItem.getCount() == 0 || orderItem.getCount() < orderDto.getCount()) {
             throw new ProductAlreadyReserved("Order amount not available");
         }
-        //save the product with reserved flag
+        //save the product decrementing the count
+        orderItem.setCount(orderItem.getCount() - orderDto.getCount());
         productRepo.save(orderItem);
         //Calculate the expiration time for the order
         Date expiresAt = new Date();
@@ -100,13 +101,10 @@ public class OrderService {
         return orderRepository.save(orders);
     }
 
-    public Orders cancelOrder(String bearerToken, String email, OrderDto orderDto) throws JsonProcessingException {
+    public Orders cancelOrder(String bearerToken, OrderDto orderDto) throws JsonProcessingException {
         bearerToken = bearerToken.substring(7);
-        if (!jwtService.validateToken(email, bearerToken)) {
+        if (!jwtService.validateToken(orderDto.getUserId(), bearerToken)) {
             throw new InvalidJwtException("The token is invalid!");
-        }
-        if (!orderDto.getUserId().equalsIgnoreCase(email)) {
-            throw new InvalidOrder("The order is not valid");
         }
         long productId = orderDto.getProductId();
         // Find Product that user is trying to order
@@ -117,6 +115,7 @@ public class OrderService {
         }
         Product orderItem = product.get();
         //save the product with reserved flag
+        orderItem.setCount(orderItem.getCount()+ orderDto.getCount());
         productRepo.save(orderItem);
         Orders orders = objectMapper.convertValue(orderDto, Orders.class);
         orders.setExpiresAt(null);

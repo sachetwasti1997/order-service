@@ -36,15 +36,13 @@ public class OrderController {
 
     @PostMapping("/create")
     public Orders createOrder(@RequestHeader("Authorization")String bearerToken,
-                              @RequestParam(name = "email")String email,
                               @RequestBody @Valid OrderDto orderDto) throws JsonProcessingException {
-        return orderService.saveOrder(bearerToken, email, orderDto);
+        return orderService.saveOrder(bearerToken, orderDto);
     }
 
     @PutMapping("/cancel")
     public Orders cancelOrder(@RequestHeader("Authorization")String bearerToken,
-                              @RequestParam(name = "email")String email,
                               @RequestBody @Valid OrderDto orderDto) throws JsonProcessingException {
-        return orderService.cancelOrder(bearerToken, email, orderDto);
+        return orderService.cancelOrder(bearerToken, orderDto);
     }
 }
