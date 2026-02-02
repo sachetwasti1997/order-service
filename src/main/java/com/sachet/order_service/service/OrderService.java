@@ -37,14 +37,16 @@ public class OrderService {
         this.environmentConfiguration = environmentConfiguration;
     }
 
-    public List<Order> getAllOrderOfUser(String email, String bearerToken) {
+    public List<Orders> getAllOrderOfUser(String email, String bearerToken) {
+        bearerToken = bearerToken.substring(7);
         if (!jwtService.validateToken(email, bearerToken)) {
             throw new InvalidJwtException("The token is invalid!");
         }
         return orderRepository.getOrderByUserId(email);
     }
 
-    public Optional<Order> getOrderById(String bearerToken, String email, long id) {
+    public Optional<Orders> getOrderById(String bearerToken, String email, long id) {
+        bearerToken = bearerToken.substring(7);
         if (!jwtService.validateToken(email, bearerToken)) {
             throw new InvalidJwtException("The token is invalid!");
         }
@@ -57,7 +59,14 @@ public class OrderService {
         productRepo.save(product);
     }
 
-    public Order saveOrder(String bearerToken, String email, OrderDto orderDto) throws JsonProcessingException {
+    public void consumeProductUpdatedEvent(ProductDto productDto) {
+        Product product = objectMapper.convertValue(productDto, Product.class);
+        LOGGER.info("Saving the product made: {}", product);
+        productRepo.save(product);
+    }
+
+    public Orders saveOrder(String bearerToken, String email, OrderDto orderDto) throws JsonProcessingException {
+        bearerToken = bearerToken.substring(7);
         if (!jwtService.validateToken(email, bearerToken)) {
             throw new InvalidJwtException("The token is invalid!");
         }
@@ -69,29 +78,30 @@ public class OrderService {
             throw new ProductNotFound("The product not found!");
         }
         Product orderItem = product.get();
-        if (orderItem.isReserved()) {
-            throw new ProductAlreadyReserved("The product is already reserved and out of capacity");
+        if (orderItem.getCount() >= 0 && orderItem.getCount() >= orderDto.getCount()) {
+            throw new ProductAlreadyReserved("Order amount not available");
         }
-        orderItem.setReserved(true);
         //save the product with reserved flag
         productRepo.save(orderItem);
         //Calculate the expiration time for the order
         Date expiresAt = new Date();
         expiresAt.setTime(System.currentTimeMillis() + (2 * 60 * 60));
         //build order and save to database
-        Order order = objectMapper.convertValue(orderDto, Order.class);
-        order.setExpiresAt(expiresAt);
-        order.setStatus(Status.ORDER_CREATED);
+        Orders orders = objectMapper.convertValue(orderDto, Orders.class);
+        orders.setExpiresAt(expiresAt);
+        orders.setStatus(Status.ORDER_CREATED);
+        orders.setSellerEmail(orderItem.getEmail());
         //TODO: Publish event
         kafkaTemplate.send(environmentConfiguration.getTopics().get("order-created"),
-                        objectMapper.writeValueAsString(order))
+                        objectMapper.writeValueAsString(orders))
                 .thenAccept(result -> {
                     LOGGER.info("Successfully sent the event {}", result);
                 }).join();
-        return orderRepository.save(order);
+        return orderRepository.save(orders);
     }
 
-    public Order cancelOrder(String bearerToken, String email, OrderDto orderDto) throws JsonProcessingException {
+    public Orders cancelOrder(String bearerToken, String email, OrderDto orderDto) throws JsonProcessingException {
+        bearerToken = bearerToken.substring(7);
         if (!jwtService.validateToken(email, bearerToken)) {
             throw new InvalidJwtException("The token is invalid!");
         }
@@ -106,21 +116,18 @@ public class OrderService {
             throw new ProductNotFound("The product not found!");
         }
         Product orderItem = product.get();
-        if (!orderItem.isReserved()) {
-            throw new ProductNotReserved("The product is already reserved and out of capacity");
-        }
-        orderItem.setReserved(false);
         //save the product with reserved flag
         productRepo.save(orderItem);
-        Order order = objectMapper.convertValue(orderDto, Order.class);
-        order.setExpiresAt(null);
-        order.setStatus(Status.ORDER_CANCELLED);
+        Orders orders = objectMapper.convertValue(orderDto, Orders.class);
+        orders.setExpiresAt(null);
+        orders.setStatus(Status.ORDER_CANCELLED);
+        orders.setSellerEmail(orderItem.getEmail());
         //TODO: Publish event
         kafkaTemplate.send(environmentConfiguration.getTopics().get("order-cancelled"),
-                objectMapper.writeValueAsString(order))
+                objectMapper.writeValueAsString(orders))
                 .thenAccept(result -> {
                     LOGGER.info("Successfully sent the event {}", result);
                 }).join();
-        return orderRepository.save(order);
+        return orderRepository.save(orders);
     }
 }

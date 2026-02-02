@@ -10,8 +10,8 @@ import java.util.Date;
 @Getter
 @Setter
 @Entity
-@Table(name = "order")
-public class Order implements Serializable {
+@Table(name = "orders")
+public class Orders implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,5 +21,7 @@ public class Order implements Serializable {
     private Date expiresAt;
     private Long productId;
     private double price;
+    private int count;
+    private String sellerEmail;
 
 }

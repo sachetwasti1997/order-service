@@ -34,4 +34,11 @@ public class KafkaService {
         orderService.consumeProductCreatedEvent(productDto);
     }
 
+    @KafkaListener(topics = "update-product", groupId = "${spring.kafka.consumer.group-id}")
+    public void consumeUpdate(String data) throws JsonProcessingException {
+        ProductDto productDto = objectMapper.readValue(data, ProductDto.class);
+//        LOGGER.info("The product received: {}", productDto);
+        orderService.consumeProductUpdatedEvent(productDto);
+    }
+
 }

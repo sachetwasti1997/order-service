@@ -1,7 +1,7 @@
 package com.sachet.order_service.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.sachet.order_service.model.Order;
+import com.sachet.order_service.model.Orders;
 import com.sachet.order_service.model.OrderDto;
 import com.sachet.order_service.service.JwtService;
 import com.sachet.order_service.service.OrderService;
@@ -24,27 +24,27 @@ public class OrderController {
     }
 
     @GetMapping("/all-orders")
-    public List<Order> getAllOrders(@RequestHeader("Authorization")String bearerToken,
-                                    @RequestParam(name = "email") String email) {
+    public List<Orders> getAllOrders(@RequestHeader("Authorization")String bearerToken,
+                                     @RequestParam(name = "email") String email) {
         return orderService.getAllOrderOfUser(email, bearerToken);
     }
 
     @GetMapping("/order")
-    public Optional<Order> getOrderById(@RequestHeader("Authorization")String bearerToken, @RequestParam(name = "email")String email, @RequestParam(name = "id")long id) {
+    public Optional<Orders> getOrderById(@RequestHeader("Authorization")String bearerToken, @RequestParam(name = "email")String email, @RequestParam(name = "id")long id) {
         return orderService.getOrderById(bearerToken, email, id);
     }
 
     @PostMapping("/create")
-    public Order createOrder(@RequestHeader("Authorization")String bearerToken,
-                             @RequestParam(name = "email")String email,
-                             @RequestBody @Valid OrderDto orderDto) throws JsonProcessingException {
+    public Orders createOrder(@RequestHeader("Authorization")String bearerToken,
+                              @RequestParam(name = "email")String email,
+                              @RequestBody @Valid OrderDto orderDto) throws JsonProcessingException {
         return orderService.saveOrder(bearerToken, email, orderDto);
     }
 
     @PutMapping("/cancel")
-    public Order cancelOrder(@RequestHeader("Authorization")String bearerToken,
-                             @RequestParam(name = "email")String email,
-                             @RequestBody @Valid OrderDto orderDto) throws JsonProcessingException {
+    public Orders cancelOrder(@RequestHeader("Authorization")String bearerToken,
+                              @RequestParam(name = "email")String email,
+                              @RequestBody @Valid OrderDto orderDto) throws JsonProcessingException {
         return orderService.cancelOrder(bearerToken, email, orderDto);
     }
 }

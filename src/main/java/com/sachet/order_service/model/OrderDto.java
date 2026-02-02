@@ -16,5 +16,6 @@ public class OrderDto {
     @NotBlank(message = "productId cannot be blank!")
     private Long productId;
     private double price;
+    private int count;
 
 }

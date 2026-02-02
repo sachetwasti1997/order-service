@@ -13,6 +13,8 @@ public class ProductDto {
     private String title;
     private double price;
     private int version;
+    private int count;
     private String imageUrl;
+    private String email;
 
 }
