@@ -34,6 +34,13 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
+		<!-- Source: https://mvnrepository.com/artifact/com.github.sonus21/rqueue-spring-boot-starter -->
+		<dependency>
+			<groupId>com.github.sonus21</groupId>
+			<artifactId>rqueue-spring-boot-starter</artifactId>
+			<version>3.4.0-RELEASE</version>
+			<scope>compile</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-cache</artifactId>

@@ -2,6 +2,7 @@ package com.sachet.order_service.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.sonus21.rqueue.core.RqueueMessageEnqueuer;
 import com.sachet.order_service.config.EnvironmentConfiguration;
 import com.sachet.order_service.exceptions.*;
 import com.sachet.order_service.model.*;
@@ -9,6 +10,7 @@ import com.sachet.order_service.repo.OrderRepository;
 import com.sachet.order_service.repo.ProductRepo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -26,15 +28,23 @@ public class OrderService {
     private final ObjectMapper objectMapper;
     private final JwtService jwtService;
     private final KafkaTemplate<String, String> kafkaTemplate;
+    private final RqueueMessageEnqueuer rqueueMessageEnqueuer;
     private final EnvironmentConfiguration environmentConfiguration;
+    private final String expirationQueue;
 
-    public OrderService(OrderRepository orderRepository, ProductRepo productRepo, ObjectMapper objectMapper, JwtService jwtService, KafkaTemplate<String, String> kafkaTemplate, EnvironmentConfiguration environmentConfiguration) {
+    public OrderService(OrderRepository orderRepository, ProductRepo productRepo,
+                        ObjectMapper objectMapper, JwtService jwtService,
+                        KafkaTemplate<String, String> kafkaTemplate, RqueueMessageEnqueuer rqueueMessageEnqueuer,
+                        EnvironmentConfiguration environmentConfiguration,
+                        @Value("${order.config.expiration.queue}") String expirationQueue) {
         this.orderRepository = orderRepository;
         this.productRepo = productRepo;
         this.objectMapper = objectMapper;
         this.jwtService = jwtService;
         this.kafkaTemplate = kafkaTemplate;
+        this.rqueueMessageEnqueuer = rqueueMessageEnqueuer;
         this.environmentConfiguration = environmentConfiguration;
+        this.expirationQueue = expirationQueue;
     }
 
     public List<Orders> getAllOrderOfUser(String email, String bearerToken) {
@@ -92,6 +102,7 @@ public class OrderService {
         orders.setExpiresAt(expiresAt);
         orders.setStatus(Status.ORDER_CREATED);
         orders.setSellerEmail(orderItem.getEmail());
+        rqueueMessageEnqueuer.enqueueIn(expirationQueue, orders, orders.getExpiresAt().getTime());
         //TODO: Publish event
         kafkaTemplate.send(environmentConfiguration.getTopics().get("order-created"),
                         objectMapper.writeValueAsString(orders))
