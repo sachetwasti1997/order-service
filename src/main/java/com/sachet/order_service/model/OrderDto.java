@@ -6,13 +6,16 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 import java.util.Date;
 
 @Getter
 @Setter
+@ToString
 public class OrderDto {
 
+    private long id;
     private String userId;
     private Status status;
     private Date expiresAt;

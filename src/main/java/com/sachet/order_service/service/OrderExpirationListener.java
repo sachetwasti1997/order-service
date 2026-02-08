@@ -33,29 +33,34 @@ public class OrderExpirationListener {
         this.objectMapper = objectMapper;
     }
 
-    @RqueueListener(value = "${order.config.expiration.queue}")
+    @RqueueListener(value = "order-expiration-queue")
     public void cancelOrder(Orders orders) throws JsonProcessingException {
-        log.info("Entered into order expiration listener");
-        if (orders.getStatus().equals(Status.PAYMENT_COMPLETED)) {
-            log.info("The payment is completed for the order!");
-            return;
+        try {
+            log.info("Entered into order expiration listener with order {}", orders);
+            if (orders.getStatus().equals(Status.PAYMENT_COMPLETED)) {
+                log.info("The payment is completed for the order!");
+                return;
+            }
+            long productId = orders.getProductId();
+            // Find Product that user is trying to order
+            Optional<Product> product = productRepo.findById(productId);
+            Product orderItem = product.get();
+//            //save the product with reserved flag
+            orderItem.setCount(orderItem.getCount() + orders.getCount());
+//
+            orders.setExpiresAt(null);
+            orders.setStatus(Status.ORDER_CANCELLED);
+            orders.setSellerEmail(orderItem.getEmail());
+            orderRepository.updateOrdersById(orders.getStatus(), orders.getId());
+            productRepo.save(orderItem);
+            kafkaTemplate.send(configuration.getTopics().get("order-cancelled"),
+                            objectMapper.writeValueAsString(orders))
+                    .thenAccept(result -> {
+                        log.info("Successfully sent the event {}", result);
+                    }).join();
+        } catch (Exception e) {
+            log.error("Ex: {}", e.getMessage());
         }
-        long productId = orders.getProductId();
-        // Find Product that user is trying to order
-        Optional<Product> product = productRepo.findById(productId);
-        Product orderItem = product.get();
-        //save the product with reserved flag
-        orderItem.setCount(orderItem.getCount()+ orders.getCount());
-        productRepo.save(orderItem);
-        orders.setExpiresAt(null);
-        orders.setStatus(Status.ORDER_CANCELLED);
-        orders.setSellerEmail(orderItem.getEmail());
-        orderRepository.save(orders);
-        kafkaTemplate.send(configuration.getTopics().get("order-cancelled"),
-                        objectMapper.writeValueAsString(orders))
-                .thenAccept(result -> {
-                    log.info("Successfully sent the event {}", result);
-                }).join();
     }
 
 }

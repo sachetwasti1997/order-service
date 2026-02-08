@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -96,23 +97,29 @@ public class OrderService {
         productRepo.save(orderItem);
         //Calculate the expiration time for the order
         Date expiresAt = new Date();
-        expiresAt.setTime(System.currentTimeMillis() + (2 * 60 * 60));
+        expiresAt.setTime((System.currentTimeMillis() + 2 * 60 * 1000));
         //build order and save to database
         Orders orders = objectMapper.convertValue(orderDto, Orders.class);
         orders.setExpiresAt(expiresAt);
         orders.setStatus(Status.ORDER_CREATED);
         orders.setSellerEmail(orderItem.getEmail());
-        rqueueMessageEnqueuer.enqueueIn(expirationQueue, orders, orders.getExpiresAt().getTime());
+        LOGGER.info("Pushing Created order into redis-queue");
+        orders = orderRepository.save(orders);
+        productRepo.save(orderItem);
+        rqueueMessageEnqueuer.enqueueIn("order-expiration-queue", orders, Duration.ofMillis(2 * 60 * 1000));
         //TODO: Publish event
         kafkaTemplate.send(environmentConfiguration.getTopics().get("order-created"),
                         objectMapper.writeValueAsString(orders))
                 .thenAccept(result -> {
                     LOGGER.info("Successfully sent the event {}", result);
                 }).join();
-        return orderRepository.save(orders);
+        return orders;
     }
 
     public Orders cancelOrder(String bearerToken, OrderDto orderDto) throws JsonProcessingException {
+        if(isOrderCreated(orderDto.getId())) {
+            throw new InvalidOrder("The Order cancelled does not exists!");
+        }
         bearerToken = bearerToken.substring(7);
         if (!jwtService.validateToken(orderDto.getUserId(), bearerToken)) {
             throw new InvalidJwtException("The token is invalid!");
@@ -139,5 +146,13 @@ public class OrderService {
                     LOGGER.info("Successfully sent the event {}", result);
                 }).join();
         return orderRepository.save(orders);
+    }
+
+    private boolean isOrderCreated(long id) {
+        Optional<Orders> orders = orderRepository.findById(id);
+        if (orders.isEmpty()) {
+            throw new InvalidOrder("The order is not valid!");
+        }
+        return orders.get().getStatus().equals(Status.ORDER_CREATED);
     }
 }
