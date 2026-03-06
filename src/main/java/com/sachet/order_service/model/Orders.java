@@ -19,7 +19,7 @@ public class Orders implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
     private String userId;
-    private Status status;
+    private String status;
     private Date expiresAt;
     private Long productId;
     private double price;

@@ -101,7 +101,7 @@ public class OrderService {
         //build order and save to database
         Orders orders = objectMapper.convertValue(orderDto, Orders.class);
         orders.setExpiresAt(expiresAt);
-        orders.setStatus(Status.ORDER_CREATED);
+        orders.setStatus(Status.ORDER_CREATED.name());
         orders.setSellerEmail(orderItem.getEmail());
         LOGGER.info("Pushing Created order into redis-queue");
         orders = orderRepository.save(orders);
@@ -137,7 +137,7 @@ public class OrderService {
         productRepo.save(orderItem);
         Orders orders = objectMapper.convertValue(orderDto, Orders.class);
         orders.setExpiresAt(null);
-        orders.setStatus(Status.ORDER_CANCELLED);
+        orders.setStatus(Status.ORDER_CANCELLED.name());
         orders.setSellerEmail(orderItem.getEmail());
         //TODO: Publish event
         kafkaTemplate.send(environmentConfiguration.getTopics().get("order-cancelled"),

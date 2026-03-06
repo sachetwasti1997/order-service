@@ -23,5 +23,5 @@ public interface OrderRepository extends JpaRepository<Orders, Long> {
     @Query(value = """
         UPDATE Orders ordr SET ordr.status = :status, ordr.expiresAt = null WHERE ordr.id = :id
     """)
-    void updateOrdersById(@Param("status")Status status, @Param("id")Long id);
+    void updateOrdersById(@Param("status")String status, @Param("id")Long id);
 }

@@ -49,9 +49,9 @@ public class OrderExpirationListener {
             orderItem.setCount(orderItem.getCount() + orders.getCount());
 //
             orders.setExpiresAt(null);
-            orders.setStatus(Status.ORDER_CANCELLED);
+            orders.setStatus(Status.ORDER_CANCELLED.name());
             orders.setSellerEmail(orderItem.getEmail());
-            orderRepository.updateOrdersById(orders.getStatus(), orders.getId());
+            orderRepository.updateOrdersById(Status.ORDER_CANCELLED.name(), orders.getId());
             productRepo.save(orderItem);
             kafkaTemplate.send(configuration.getTopics().get("order-cancelled"),
                             objectMapper.writeValueAsString(orders))
