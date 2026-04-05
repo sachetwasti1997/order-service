@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sachet.order_service.config.EnvironmentConfiguration;
 import com.sachet.order_service.model.ProductDto;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -28,8 +29,8 @@ public class KafkaService {
     }
 
     @KafkaListener(topics = "${order.config.topics.add-product}", groupId = "${spring.kafka.consumer.group-id}")
-    public void consumer(String data) throws JsonProcessingException {
-        ProductDto productDto = objectMapper.readValue(data, ProductDto.class);
+    public void consumer(ConsumerRecord<String, com.sachet.order_service.model.dto.ProductDto> consumerRecord) throws JsonProcessingException {
+        ProductDto productDto = objectMapper.convertValue(consumerRecord.value(), ProductDto.class);
 //        LOGGER.info("The product received: {}", productDto);
         orderService.consumeProductCreatedEvent(productDto);
     }
