@@ -3,6 +3,8 @@ package com.sachet.order_service.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.sonus21.rqueue.core.RqueueMessageEnqueuer;
+import com.sachet.OrderDto;
+import com.sachet.ProductDto;
 import com.sachet.order_service.config.EnvironmentConfiguration;
 import com.sachet.order_service.exceptions.*;
 import com.sachet.order_service.model.*;
@@ -18,6 +20,7 @@ import java.time.Duration;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class OrderService {
@@ -28,14 +31,14 @@ public class OrderService {
     private final ProductRepo productRepo;
     private final ObjectMapper objectMapper;
     private final JwtService jwtService;
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final KafkaTemplate<String, OrderDto> kafkaTemplate;
     private final RqueueMessageEnqueuer rqueueMessageEnqueuer;
     private final EnvironmentConfiguration environmentConfiguration;
     private final String expirationQueue;
 
     public OrderService(OrderRepository orderRepository, ProductRepo productRepo,
                         ObjectMapper objectMapper, JwtService jwtService,
-                        KafkaTemplate<String, String> kafkaTemplate, RqueueMessageEnqueuer rqueueMessageEnqueuer,
+                        KafkaTemplate<String, OrderDto> kafkaTemplate, RqueueMessageEnqueuer rqueueMessageEnqueuer,
                         EnvironmentConfiguration environmentConfiguration,
                         @Value("${order.config.expiration.queue}") String expirationQueue) {
         this.orderRepository = orderRepository;
@@ -64,8 +67,8 @@ public class OrderService {
         return orderRepository.findById(id);
     }
 
-    public void consumeProductCreatedEvent(ProductEntity productEntity) {
-        Product product = objectMapper.convertValue(productEntity, Product.class);
+    public void consumeProductCreatedEvent(ProductEntity productDto) {
+        Product product = objectMapper.convertValue(productDto, Product.class);
         LOGGER.info("Saving the product made: {}", product);
         productRepo.save(product);
     }
@@ -76,12 +79,12 @@ public class OrderService {
         productRepo.save(product);
     }
 
-    public Orders saveOrder(String bearerToken, OrderDto orderDto) throws JsonProcessingException {
+    public Orders saveOrder(String bearerToken, Orders orders) throws JsonProcessingException {
         bearerToken = bearerToken.substring(7);
-        if (!jwtService.validateToken(orderDto.getUserId(), bearerToken)) {
+        if (!jwtService.validateToken(orders.getUserId(), bearerToken)) {
             throw new InvalidJwtException("The token is invalid!");
         }
-        long productId = orderDto.getProductId();
+        long productId = orders.getProductId();
         // Find Product that user is trying to order
         Optional<Product> product = productRepo.findById(productId);
         // Determine product exists and not already reserved
@@ -89,42 +92,44 @@ public class OrderService {
             throw new ProductNotFound("The product not found!");
         }
         Product orderItem = product.get();
-        if (orderItem.getCount() == 0 || orderItem.getCount() < orderDto.getCount()) {
+        if (orderItem.getCount() == 0 || orderItem.getCount() < orders.getCount()) {
             throw new ProductAlreadyReserved("Order amount not available");
         }
         //save the product decrementing the count
-        orderItem.setCount(orderItem.getCount() - orderDto.getCount());
+        orderItem.setCount(orderItem.getCount() - orders.getCount());
         productRepo.save(orderItem);
         //Calculate the expiration time for the order
         Date expiresAt = new Date();
         expiresAt.setTime((System.currentTimeMillis() + 2 * 60 * 1000));
         //build order and save to database
-        Orders orders = objectMapper.convertValue(orderDto, Orders.class);
         orders.setExpiresAt(expiresAt);
         orders.setStatus(Status.ORDER_CREATED.name());
         orders.setSellerEmail(orderItem.getEmail());
         LOGGER.info("Pushing Created order into redis-queue");
         orders = orderRepository.save(orders);
-        productRepo.save(orderItem);
         rqueueMessageEnqueuer.enqueueIn("order-expiration-queue", orders, Duration.ofMillis(2 * 60 * 1000));
         //TODO: Publish event
+        OrderDto orderDto = OrderDto.newBuilder()
+                        .setCount(orders.getCount())
+                        .setProductId(orders.getProductId())
+                        .build();
         kafkaTemplate.send(environmentConfiguration.getTopics().get("order-created"),
-                        objectMapper.writeValueAsString(orders))
+                        UUID.randomUUID().toString(),orderDto)
                 .thenAccept(result -> {
                     LOGGER.info("Successfully sent the event {}", result);
                 }).join();
         return orders;
     }
 
-    public Orders cancelOrder(String bearerToken, OrderDto orderDto) throws JsonProcessingException {
-        if(isOrderCreated(orderDto.getId())) {
+    public Orders cancelOrder(String bearerToken, Orders orders) throws JsonProcessingException {
+        if(isOrderCreated(orders.getId())) {
             throw new InvalidOrder("The Order cancelled does not exists!");
         }
         bearerToken = bearerToken.substring(7);
-        if (!jwtService.validateToken(orderDto.getUserId(), bearerToken)) {
+        if (!jwtService.validateToken(orders.getUserId(), bearerToken)) {
             throw new InvalidJwtException("The token is invalid!");
         }
-        long productId = orderDto.getProductId();
+        long productId = orders.getProductId();
         // Find Product that user is trying to order
         Optional<Product> product = productRepo.findById(productId);
         // Determine product exists and not already reserved
@@ -133,15 +138,18 @@ public class OrderService {
         }
         Product orderItem = product.get();
         //save the product with reserved flag
-        orderItem.setCount(orderItem.getCount()+ orderDto.getCount());
+        orderItem.setCount(orderItem.getCount()+ orders.getCount());
         productRepo.save(orderItem);
-        Orders orders = objectMapper.convertValue(orderDto, Orders.class);
         orders.setExpiresAt(null);
         orders.setStatus(Status.ORDER_CANCELLED.name());
         orders.setSellerEmail(orderItem.getEmail());
         //TODO: Publish event
+        OrderDto orderDto = OrderDto.newBuilder()
+                .setCount(orders.getCount())
+                .setProductId(orders.getProductId())
+                .build();
         kafkaTemplate.send(environmentConfiguration.getTopics().get("order-cancelled"),
-                objectMapper.writeValueAsString(orders))
+                UUID.randomUUID().toString(), orderDto)
                 .thenAccept(result -> {
                     LOGGER.info("Successfully sent the event {}", result);
                 }).join();

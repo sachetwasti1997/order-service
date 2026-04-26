@@ -34,6 +34,7 @@ order.config:
     add-product: user-add-product
     order-created: order-created
     order-cancelled: order-cancelled
+    order-expired: order-expired
   databaseConfiguration:
     driverClassName: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://mysql-0.mysql.default.svc.cluster.local:3306/ecommorder

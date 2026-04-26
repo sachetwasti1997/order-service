@@ -39,6 +39,7 @@ public class KafkaService {
         productEntity.setId(productDto.getId());
         productEntity.setVersion(productDto.getVersion());
         productEntity.setPrice(productDto.getPrice());
+        productEntity.setCount(productDto.getCount());
         productEntity.setEmail(productDto.getEmail() != null? productDto.getEmail().toString(): null);
         productEntity.setTitle(productDto.getTitle() != null ? productDto.getTitle().toString() : null);
         productEntity.setImageUrl(productDto.getImageUrl() != null ? productDto.getImageUrl().toString() : null);
