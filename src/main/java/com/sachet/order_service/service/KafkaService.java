@@ -1,11 +1,11 @@
 package com.sachet.order_service.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sachet.ProductDto;
 import com.sachet.order_service.config.EnvironmentConfiguration;
-import com.sachet.order_service.model.ProductDto;
+import com.sachet.order_service.model.ProductEntity;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,18 +28,25 @@ public class KafkaService {
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
-    @KafkaListener(topics = "${order.config.topics.add-product}", groupId = "${spring.kafka.consumer.group-id}")
-    public void consumer(ConsumerRecord<String, com.sachet.order_service.model.dto.ProductDto> consumerRecord) throws JsonProcessingException {
-        ProductDto productDto = objectMapper.convertValue(consumerRecord.value(), ProductDto.class);
-//        LOGGER.info("The product received: {}", productDto);
-        orderService.consumeProductCreatedEvent(productDto);
+    @KafkaListener(topics = "${order.config.topics.add-product}", groupId = "${order.config.kafkaConfiguration.groupId}")
+    public void consumer(ProductDto productDto) throws JsonProcessingException {
+        LOGGER.info("The product received: {}", productDto);
+        ProductEntity productEntity = new ProductEntity();
+        productEntity.setId(productDto.getId());
+        productEntity.setVersion(productDto.getVersion());
+        productEntity.setPrice(productDto.getPrice());
+        productEntity.setEmail(productDto.getEmail() != null? productDto.getEmail().toString(): null);
+        productEntity.setTitle(productDto.getTitle() != null ? productDto.getTitle().toString() : null);
+        productEntity.setImageUrl(productDto.getImageUrl() != null ? productDto.getImageUrl().toString() : null);
+
+        orderService.consumeProductCreatedEvent(productEntity);
     }
 
     @KafkaListener(topics = "update-product", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeUpdate(String data) throws JsonProcessingException {
-        ProductDto productDto = objectMapper.readValue(data, ProductDto.class);
+        ProductEntity productEntity = objectMapper.readValue(data, ProductEntity.class);
 //        LOGGER.info("The product received: {}", productDto);
-        orderService.consumeProductUpdatedEvent(productDto);
+        orderService.consumeProductUpdatedEvent(productEntity);
     }
 
 }

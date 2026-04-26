@@ -3,6 +3,7 @@ package com.sachet.order_service.config;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sachet.order_service.config.model.DatabaseConfiguration;
+import com.sachet.order_service.config.model.KafkaConfiguration;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -19,6 +20,7 @@ import java.util.Map;
 public class EnvironmentConfiguration {
     private DatabaseConfiguration databaseConfiguration;
     private Map<String, String> topics;
+    private KafkaConfiguration kafkaConfiguration;
 }
 
 @Configuration

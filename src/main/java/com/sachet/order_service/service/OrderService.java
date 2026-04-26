@@ -64,14 +64,14 @@ public class OrderService {
         return orderRepository.findById(id);
     }
 
-    public void consumeProductCreatedEvent(ProductDto productDto) {
-        Product product = objectMapper.convertValue(productDto, Product.class);
+    public void consumeProductCreatedEvent(ProductEntity productEntity) {
+        Product product = objectMapper.convertValue(productEntity, Product.class);
         LOGGER.info("Saving the product made: {}", product);
         productRepo.save(product);
     }
 
-    public void consumeProductUpdatedEvent(ProductDto productDto) {
-        Product product = objectMapper.convertValue(productDto, Product.class);
+    public void consumeProductUpdatedEvent(ProductEntity productEntity) {
+        Product product = objectMapper.convertValue(productEntity, Product.class);
         LOGGER.info("Saving the product made: {}", product);
         productRepo.save(product);
     }

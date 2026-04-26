@@ -1,5 +1,5 @@
 {
-  "namespace": "com.sachet.order_service.model.dto",
+  "namespace": "com.sachet",
   "type": "record",
   "name": "ProductDto",
   "fields": [
