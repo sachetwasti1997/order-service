@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Service
 public class KafkaService {
 
@@ -30,8 +32,10 @@ public class KafkaService {
 
     @KafkaListener(topics = "${order.config.topics.add-product}", groupId = "${order.config.kafkaConfiguration.groupId}")
     public void consumer(ProductDto productDto) throws JsonProcessingException {
-        LOGGER.info("The product received: {}", productDto);
+
+//        ProductDto productDto = objectMapper.readValue(data, ProductDto.class);
         ProductEntity productEntity = new ProductEntity();
+        LOGGER.info("The product received: {}", productDto);
         productEntity.setId(productDto.getId());
         productEntity.setVersion(productDto.getVersion());
         productEntity.setPrice(productDto.getPrice());
@@ -42,7 +46,7 @@ public class KafkaService {
         orderService.consumeProductCreatedEvent(productEntity);
     }
 
-    @KafkaListener(topics = "update-product", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "update-product", groupId = "${order.config.kafkaConfiguration.groupId}")
     public void consumeUpdate(String data) throws JsonProcessingException {
         ProductEntity productEntity = objectMapper.readValue(data, ProductEntity.class);
 //        LOGGER.info("The product received: {}", productDto);
