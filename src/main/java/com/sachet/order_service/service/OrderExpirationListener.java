@@ -62,6 +62,11 @@ public class OrderExpirationListener {
             OrderDto orderDto = OrderDto.newBuilder()
                     .setCount(orders.getCount())
                     .setProductId(orders.getProductId())
+                    .setSellerEmail(orders.getSellerEmail())
+                    .setBuyerEmail(orders.getUserId())
+                    .setStatus(orders.getStatus())
+                    .setPrice(orders.getPrice())
+                    .setOrderId(orders.getId())
                     .build();
             kafkaTemplate.send(configuration.getTopics().get("order-expired"),
                             UUID.randomUUID().toString(), orderDto)

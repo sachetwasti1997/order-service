@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.sonus21.rqueue.core.RqueueMessageEnqueuer;
 import com.sachet.OrderDto;
-import com.sachet.ProductDto;
 import com.sachet.order_service.config.EnvironmentConfiguration;
 import com.sachet.order_service.exceptions.*;
 import com.sachet.order_service.model.*;
@@ -110,8 +109,13 @@ public class OrderService {
         rqueueMessageEnqueuer.enqueueIn("order-expiration-queue", orders, Duration.ofMillis(2 * 60 * 1000));
         //TODO: Publish event
         OrderDto orderDto = OrderDto.newBuilder()
-                        .setCount(orders.getCount())
-                        .setProductId(orders.getProductId())
+                .setCount(orders.getCount())
+                .setProductId(orders.getProductId())
+                .setSellerEmail(orders.getSellerEmail())
+                .setBuyerEmail(orders.getUserId())
+                .setStatus(orders.getStatus())
+                .setPrice(orders.getPrice())
+                .setOrderId(orders.getId())
                         .build();
         kafkaTemplate.send(environmentConfiguration.getTopics().get("order-created"),
                         UUID.randomUUID().toString(),orderDto)
@@ -147,6 +151,11 @@ public class OrderService {
         OrderDto orderDto = OrderDto.newBuilder()
                 .setCount(orders.getCount())
                 .setProductId(orders.getProductId())
+                .setSellerEmail(orders.getSellerEmail())
+                .setBuyerEmail(orders.getUserId())
+                .setStatus(orders.getStatus())
+                .setPrice(orders.getPrice())
+                .setOrderId(orders.getId())
                 .build();
         kafkaTemplate.send(environmentConfiguration.getTopics().get("order-cancelled"),
                 UUID.randomUUID().toString(), orderDto)

@@ -10,6 +10,26 @@
         {
             "name": "productId",
             "type": "long"
+        },
+        {
+            "name": "price",
+            "type": "double"
+        },
+        {
+            "name": "status",
+            "type": "string"
+        },
+        {
+            "name": "sellerEmail",
+            "type": "string"
+        },
+        {
+            "name": "buyerEmail",
+            "type": "string"
+        },
+        {
+            "name": "orderId",
+            "type": "long"
         }
     ]
 }
