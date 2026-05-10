@@ -3,9 +3,12 @@ package com.sachet.order_service.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sachet.OrderDto;
 import com.sachet.ProductDto;
 import com.sachet.order_service.config.EnvironmentConfiguration;
+import com.sachet.order_service.model.Orders;
 import com.sachet.order_service.model.ProductEntity;
+import com.sachet.order_service.model.Status;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +55,21 @@ public class KafkaService {
         ProductEntity productEntity = objectMapper.readValue(data, ProductEntity.class);
 //        LOGGER.info("The product received: {}", productDto);
         orderService.consumeProductUpdatedEvent(productEntity);
+    }
+
+    @KafkaListener(topics = "order-expired", groupId = "${order.config.kafkaConfiguration.groupId}")
+    public void consumeOrderExpired(OrderDto orderDto) {
+        LOGGER.info("consumed order-expired event {}", orderDto);
+        Orders orders = new Orders();
+        orders.setId(orderDto.getOrderId());
+        orders.setProductId(orderDto.getProductId());
+        orders.setCount(orderDto.getCount());
+        orders.setPrice(orderDto.getPrice());
+        orders.setUserId(orderDto.getBuyerEmail().toString());
+        orders.setExpiresAt(null);
+        orders.setStatus(Status.ORDER_CANCELLED.name());
+        orders.setSellerEmail(orderDto.getSellerEmail().toString());
+        orderService.consumeOrderExpired(orders);
     }
 
 }

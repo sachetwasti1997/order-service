@@ -16,6 +16,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -31,23 +32,18 @@ public class OrderService {
     private final ObjectMapper objectMapper;
     private final JwtService jwtService;
     private final KafkaTemplate<String, OrderDto> kafkaTemplate;
-    private final RqueueMessageEnqueuer rqueueMessageEnqueuer;
     private final EnvironmentConfiguration environmentConfiguration;
-    private final String expirationQueue;
 
     public OrderService(OrderRepository orderRepository, ProductRepo productRepo,
                         ObjectMapper objectMapper, JwtService jwtService,
-                        KafkaTemplate<String, OrderDto> kafkaTemplate, RqueueMessageEnqueuer rqueueMessageEnqueuer,
-                        EnvironmentConfiguration environmentConfiguration,
-                        @Value("${order.config.expiration.queue}") String expirationQueue) {
+                        KafkaTemplate<String, OrderDto> kafkaTemplate,
+                        EnvironmentConfiguration environmentConfiguration) {
         this.orderRepository = orderRepository;
         this.productRepo = productRepo;
         this.objectMapper = objectMapper;
         this.jwtService = jwtService;
         this.kafkaTemplate = kafkaTemplate;
-        this.rqueueMessageEnqueuer = rqueueMessageEnqueuer;
         this.environmentConfiguration = environmentConfiguration;
-        this.expirationQueue = expirationQueue;
     }
 
     public List<Orders> getAllOrderOfUser(String email, String bearerToken) {
@@ -106,7 +102,6 @@ public class OrderService {
         orders.setSellerEmail(orderItem.getEmail());
         LOGGER.info("Pushing Created order into redis-queue");
         orders = orderRepository.save(orders);
-        rqueueMessageEnqueuer.enqueueIn("order-expiration-queue", orders, Duration.ofMillis(2 * 60 * 1000));
         //TODO: Publish event
         OrderDto orderDto = OrderDto.newBuilder()
                 .setCount(orders.getCount())
@@ -115,6 +110,7 @@ public class OrderService {
                 .setBuyerEmail(orders.getUserId())
                 .setStatus(orders.getStatus())
                 .setPrice(orders.getPrice())
+                .setExpiresAt(Instant.ofEpochMilli(2 * 60 * 1000))
                 .setOrderId(orders.getId())
                         .build();
         kafkaTemplate.send(environmentConfiguration.getTopics().get("order-created"),
@@ -171,5 +167,22 @@ public class OrderService {
             throw new InvalidOrder("The order is not valid!");
         }
         return orders.get().getStatus().equals(Status.ORDER_CREATED);
+    }
+
+    public void consumeOrderExpired(Orders orders) {
+        LOGGER.info("Entered into order expiration listener with order {}", orders);
+        if (orders.getStatus().equals(Status.PAYMENT_COMPLETED.name())) {
+            LOGGER.info("The payment is completed for the order!");
+            return;
+        }
+        long productId = orders.getProductId();
+        // Find Product that user is trying to order
+        Optional<Product> product = productRepo.findById(productId);
+        Product orderItem = product.get();
+//            //save the product with reserved flag
+        orderItem.setCount(orderItem.getCount() + orders.getCount());
+
+        orderRepository.updateOrdersById(Status.ORDER_CANCELLED.name(), orders.getId());
+        productRepo.save(orderItem);
     }
 }
